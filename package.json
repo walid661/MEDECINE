@@ -13,7 +13,8 @@
     "react-dom": "18.2.0",
     "lucide-react": "0.344.0",
     "react-router-dom": "6.22.3",
-    "@remix-run/router": "1.15.3"
+    "@remix-run/router": "1.15.3",
+    "@supabase/supabase-js": "2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
