@@ -23,6 +23,23 @@ serve(async (req) => {
     const configuration = new Configuration({ apiKey: Deno.env.get('OPENAI_API_KEY') }) 
     const openai = new OpenAIApi(configuration)
 
+    // --- MAPPING INTELLIGENT (Data Cleaning à la volée) ---
+    let searchKeyword = module;
+    let filterYear = null; // Pour l'instant null, mais prêt pour le futur
+
+    // 1. Gestion ANATOMIE (S1 vs S2)
+    if (module === 'Anatomie 1') {
+      searchKeyword = 'Anatomie 1'; // Vise "Anatomie 1" (853 docs)
+    } else if (module === 'Anatomie 2') {
+      searchKeyword = 'Anatomie l'; // Vise "Anatomie ll" (OCR error) ou "Anatomie II"
+    } else if (module.includes('Anatomie')) {
+      searchKeyword = 'Anatomie'; // Fallback générique
+    }
+    // 2. Autres mappings basés sur l'audit Data
+    else if (module.includes('Cardio')) searchKeyword = 'Cardio';
+    else if (module.includes('Pneumo') || module.includes('Respiratoire')) searchKeyword = 'Respiratoire';
+    else if (module.includes('Digestif') || module.includes('Gastro')) searchKeyword = 'Digestif';
+
     // 3. RAG : Recherche des documents (Fonction match_documents existante)
     const embeddingResponse = await openai.createEmbedding({
       model: 'text-embedding-3-small',
@@ -30,11 +47,14 @@ serve(async (req) => {
     })
     const embedding = embeddingResponse.data.data[0].embedding
     
+    // Appel RPC mis à jour avec filter_module et filter_year
     const { data: chunks } = await supabaseClient.rpc('match_documents', {
       query_embedding: embedding,
       match_threshold: 0.3,
       match_count: 5,
-      filter_types: ['ANNALE', 'EXERCICE', 'EXERCICE_TP']
+      filter_types: ['ANNALE', 'EXERCICE', 'EXERCICE_TP'],
+      filter_module: searchKeyword,
+      filter_year: filterYear
     })
     
     const context = chunks?.map((c: any) => c.content).join('\n---\n') || ""

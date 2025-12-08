@@ -3,13 +3,33 @@ import ModuleCard from '../components/ModuleCard';
 import RightPanel from '../components/RightPanel';
 import QuizOverlay from '../components/QuizOverlay';
 import { ModuleData } from '../types';
-import { Heart, Stethoscope, Brain, Microscope, Pill, Dna, Lock } from 'lucide-react';
+import { Heart, Stethoscope, Brain, Microscope, Pill, Bone, Lock } from 'lucide-react';
 
-// Mock Data
+// Mock Data - Updated with specific IDs for Backend Mapping
 const MODULES: ModuleData[] = [
   {
-    id: '1',
-    title: 'Cardiology Basics',
+    id: 'Anatomie 1',
+    title: 'Anatomie S1',
+    description: 'Ostéologie, Arthrologie, Myologie du membre supérieur et inférieur.',
+    icon: <Bone size={32} fill="currentColor" />,
+    progress: 45,
+    totalLessons: 12,
+    color: 'primary',
+    status: 'active'
+  },
+  {
+    id: 'Anatomie 2',
+    title: 'Anatomie S2',
+    description: 'Splanchnologie, Neuro-anatomie et Tête/Cou.',
+    icon: <Microscope size={32} />,
+    progress: 10,
+    totalLessons: 14,
+    color: 'purple',
+    status: 'active'
+  },
+  {
+    id: 'Cardio',
+    title: 'Cardiologie',
     description: 'Heart anatomy, cycles, and ECG fundamentals.',
     icon: <Heart size={32} fill="currentColor" />,
     progress: 75,
@@ -18,8 +38,8 @@ const MODULES: ModuleData[] = [
     status: 'active'
   },
   {
-    id: '2',
-    title: 'Respiratory System',
+    id: 'Pneumo',
+    title: 'Pneumologie',
     description: 'Lung mechanics, gas exchange, and common pathologies.',
     icon: <Stethoscope size={32} />,
     progress: 30,
@@ -28,29 +48,9 @@ const MODULES: ModuleData[] = [
     status: 'active'
   },
   {
-    id: '3',
-    title: 'Neurology',
-    description: 'Brain function, nerves, and reflexes.',
-    icon: <Brain size={32} />,
-    progress: 0,
-    totalLessons: 12,
-    color: 'purple',
-    status: 'active'
-  },
-  {
-    id: '4',
-    title: 'Immunology',
-    description: 'Defense mechanisms and cellular response.',
-    icon: <Microscope size={32} />,
-    progress: 0,
-    totalLessons: 6,
-    color: 'primary',
-    status: 'locked'
-  },
-  {
-    id: '5',
-    title: 'Pharmacology',
-    description: 'Drug interactions and mechanisms.',
+    id: 'Digestif',
+    title: 'Gastro-Entérologie',
+    description: 'Digestive system functions, disorders and metabolism.',
     icon: <Pill size={32} />,
     progress: 0,
     totalLessons: 15,
@@ -58,13 +58,13 @@ const MODULES: ModuleData[] = [
     status: 'locked'
   },
   {
-    id: '6',
-    title: 'Genetics',
-    description: 'DNA replication and hereditary diseases.',
-    icon: <Dna size={32} />,
+    id: 'Neuro',
+    title: 'Neurologie',
+    description: 'Brain function, nerves, and reflexes.',
+    icon: <Brain size={32} />,
     progress: 0,
-    totalLessons: 5,
-    color: 'blue',
+    totalLessons: 12,
+    color: 'purple',
     status: 'locked'
   },
 ];
