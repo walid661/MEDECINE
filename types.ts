@@ -17,3 +17,17 @@ export interface UserStats {
   streak: number;
   gems: number;
 }
+
+export interface QuizOption {
+  id: string;
+  text: string;
+}
+
+export interface QuizQuestion {
+  id?: string;
+  quiz_id?: string;
+  question_text: string;
+  options: QuizOption[];
+  correct_option_id: string;
+  explanation: string;
+}
