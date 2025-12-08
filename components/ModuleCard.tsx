@@ -1,6 +1,6 @@
 import React from 'react';
 import { JuicyCard, JuicyButton, ProgressBar } from './ui/JuicyUI';
-import { ModuleData } from '../types';
+import type { ModuleData } from '../types';
 import { Lock, CheckCircle2, Play } from 'lucide-react';
 
 interface ModuleCardProps {

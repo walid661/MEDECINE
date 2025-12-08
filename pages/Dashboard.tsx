@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import ModuleCard from '../components/ModuleCard';
 import RightPanel from '../components/RightPanel';
 import QuizOverlay from '../components/QuizOverlay';
-import { ModuleData } from '../types';
+import type { ModuleData } from '../types';
 import { Heart, Stethoscope, Brain, Microscope, Pill, Bone, Lock } from 'lucide-react';
 
 // Mock Data - Updated with specific IDs for Backend Mapping

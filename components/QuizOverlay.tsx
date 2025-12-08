@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { JuicyCard, JuicyButton, ProgressBar } from './ui/JuicyUI';
 import { X, Heart, CheckCircle2, XCircle, Trophy, Loader2, ArrowRight } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
-import { QuizQuestion } from '../types';
+import type { QuizQuestion } from '../types';
 
 interface QuizOverlayProps {
     isOpen: boolean;
@@ -186,7 +186,8 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
                                 
                                 <div className="flex-1 mx-4">
                                     <ProgressBar 
-                                        progress={((currentIndex) / questions.length) * 100} 
+                                        value={currentIndex + 1} 
+                                        max={questions.length} 
                                         color="primary" 
                                     />
                                 </div>
@@ -216,20 +217,19 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
                                         const isSelected = selectedOptionId === option.id;
                                         const isCorrectOption = option.id === currentQuestion.correct_option_id;
                                         
-                                        // Dynamic styling based on state
+                                        // Dynamic styling based on state using new semantic variants
                                         let variant: any = 'outline';
-                                        let borderColor = 'border-med-border';
                                         
                                         if (currentState === 'FEEDBACK') {
                                             if (isCorrectOption) {
-                                                variant = 'primary'; // Show correct answer in Green
+                                                variant = 'primary'; // Correct answer in Green
                                             } else if (isSelected && !isCorrectOption) {
-                                                variant = 'red'; // Show wrong selection in Red
+                                                variant = 'danger'; // Wrong selection in Red
                                             } else {
                                                 variant = 'outline'; // Fade others
                                             }
                                         } else if (isSelected) {
-                                            variant = 'blue';
+                                            variant = 'secondary'; // Selected state in Blue
                                         }
 
                                         return (
@@ -298,7 +298,7 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
                                     </div>
                                 </div>
                                 <JuicyButton 
-                                    variant={isCorrect ? 'primary' : 'red'} 
+                                    variant={isCorrect ? 'primary' : 'danger'} 
                                     fullWidth 
                                     onClick={handleNext}
                                     className="flex items-center justify-center gap-2"
