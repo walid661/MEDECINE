@@ -1,15 +1,15 @@
 import React from 'react';
-import { Home, BookOpen, Trophy, Store, MoreHorizontal, Activity } from 'lucide-react';
-import { JuicyButton } from './ui/JuicyUI';
+import { Home, BookOpen, Trophy, Store, MoreHorizontal, Activity, Swords } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 
 const Sidebar: React.FC = () => {
     
-    // Simulate active route
-    const activeRoute = '/learn';
+    const location = useLocation();
+    const activeRoute = location.pathname;
 
     const navItems = [
-        { icon: <Home size={28} />, label: 'Lobby', path: '/lobby' },
-        { icon: <Activity size={28} />, label: 'Learn', path: '/learn' },
+        { icon: <Home size={28} />, label: 'Learn', path: '/' },
+        { icon: <Swords size={28} />, label: 'Battle', path: '/battle' },
         { icon: <BookOpen size={28} />, label: 'Review', path: '/review' },
         { icon: <Trophy size={28} />, label: 'Rank', path: '/leaderboard' },
         { icon: <Store size={28} />, label: 'Shop', path: '/shop' },
@@ -32,8 +32,9 @@ const Sidebar: React.FC = () => {
                 {navItems.map((item) => {
                     const isActive = activeRoute === item.path;
                     return (
-                        <button
+                        <Link
                             key={item.path}
+                            to={item.path}
                             className={`
                                 w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 border-2 border-transparent
                                 ${isActive 
@@ -47,7 +48,7 @@ const Sidebar: React.FC = () => {
                             <span className={`font-extrabold text-sm uppercase tracking-widest hidden lg:block ${isActive ? 'text-med-blueDark' : ''}`}>
                                 {item.label}
                             </span>
-                        </button>
+                        </Link>
                     )
                 })}
                 
@@ -56,8 +57,6 @@ const Sidebar: React.FC = () => {
                      <span className="font-extrabold text-sm uppercase tracking-widest">More</span>
                 </button>
             </nav>
-
-            {/* Mobile/Tablet Compact Mode Button is handled by responsive CSS (hidden lg:block above) */}
         </aside>
     );
 };
