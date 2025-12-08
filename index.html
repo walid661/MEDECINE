@@ -1,62 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MedQuest</title>
-    <!-- Nunito Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Tailwind Configuration -->
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Nunito', 'sans-serif'],
-            },
-            colors: {
-              med: {
-                bg: '#F7F5F0',       
-                surface: '#FFFFFF',  
-                primary: '#58CC02',  
-                primaryDark: '#46A302', 
-                blue: '#4ACDF8',     
-                blueDark: '#2CABDB', 
-                purple: '#CE82FF',   
-                purpleDark: '#A661D1',
-                orange: '#FF9600',   
-                orangeDark: '#CC7800',
-                red: '#FF4B4B',
-                redDark: '#D42D2D',
-                text: '#4B5563',     
-                border: '#E5E7EB',   
-                gold: '#FFD700',     
-              }
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MedQuest</title>
+  <!-- Nunito Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Tailwind Configuration -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Nunito', 'sans-serif'],
+          },
+          colors: {
+            med: {
+              bg: '#F7F5F0',
+              surface: '#FFFFFF',
+              primary: '#58CC02',
+              primaryDark: '#46A302',
+              blue: '#4ACDF8',
+              blueDark: '#2CABDB',
+              purple: '#CE82FF',
+              purpleDark: '#A661D1',
+              orange: '#FF9600',
+              orangeDark: '#CC7800',
+              red: '#FF4B4B',
+              redDark: '#D42D2D',
+              text: '#4B5563',
+              border: '#E5E7EB',
+              gold: '#FFD700',
             }
           }
         }
       }
-    </script>
-    <style>
-      /* Custom scrollbar for a cleaner look */
-      ::-webkit-scrollbar {
-        width: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #F7F5F0; 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #E5E7EB; 
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #d1d5db; 
-      }
-    </style>
+    }
+  </script>
+  <style>
+    /* Custom scrollbar for a cleaner look */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #F7F5F0;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #E5E7EB;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #d1d5db;
+    }
+  </style>
   <script type="importmap">
 {
   "imports": {
@@ -73,7 +77,10 @@
 }
 </script>
 </head>
-  <body class="bg-med-bg text-med-text font-sans antialiased">
-    <div id="root"></div>
-  </body>
+
+<body class="bg-med-bg text-med-text font-sans antialiased">
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
 </html>
