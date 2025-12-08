@@ -1,0 +1,5 @@
+{
+  "name": "MedQuest",
+  "description": "A gamified medical learning platform inspired by Duolingo. Features a juicy, colorful UI with 3D-flat design elements.",
+  "requestFramePermissions": []
+}
