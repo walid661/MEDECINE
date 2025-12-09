@@ -185,13 +185,13 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
             className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'}`}
         >
             <div
-                className={`w-full max-w-2xl px-4 transition-all duration-300 transform ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-10'}`}
+                className={`w-full max-w-2xl px-4 max-h-[90vh] transition-all duration-300 transform ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-10'}`}
             >
-                <JuicyCard className="relative overflow-hidden flex flex-col min-h-[600px] border-b-[6px] p-0">
+                <JuicyCard className="relative overflow-hidden flex flex-col max-h-[90vh] border-b-[6px] p-0">
 
                     {/* Header (Only visible if not loading/results) */}
                     {(currentState === 'PLAYING' || currentState === 'FEEDBACK') && (
-                        <div className="p-5 pb-0">
+                        <div className="p-5 pb-0 flex-shrink-0">
                             <div className="flex items-center justify-between mb-6">
                                 <button
                                     onClick={onClose}
@@ -218,6 +218,7 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
 
                     {/* Main Content Area */}
                     <div className="flex-1 flex flex-col p-5 pt-0 overflow-y-auto">
+
                         {currentState === 'LOADING' && renderLoading()}
                         {currentState === 'ERROR' && renderError()}
                         {currentState === 'RESULTS' && renderResults()}
