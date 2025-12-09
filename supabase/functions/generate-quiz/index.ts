@@ -8,7 +8,6 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // 1. Gestion CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -16,7 +15,6 @@ serve(async (req) => {
   try {
     const { module, userId, mode } = await req.json()
 
-    // 2. Connexion Supabase & OpenAI (Syntaxe V4)
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -26,7 +24,7 @@ serve(async (req) => {
       apiKey: Deno.env.get('OPENAI_API_KEY'),
     })
 
-    // 3. Création du Quiz en BDD
+    // Create quiz entry
     const { data: quizData, error: quizError } = await supabaseClient
       .from('quizzes')
       .insert({
@@ -43,7 +41,7 @@ serve(async (req) => {
     if (quizError) throw new Error("Erreur DB Création Quiz: " + quizError.message);
     const quizId = quizData.id;
 
-    // --- MAPPING INTELLIGENT ---
+    // Intelligent module mapping
     let searchKeyword = module;
     let filterYear = null;
 
@@ -54,17 +52,15 @@ serve(async (req) => {
     else if (module.includes('Pneumo') || module.includes('Respiratoire')) searchKeyword = 'Respiratoire';
     else if (module.includes('Digestif') || module.includes('Gastro')) searchKeyword = 'Digestif';
 
-    console.log(`🔍 Recherche pour: ${searchKeyword}`);
-
-    // 4. RAG : Embedding (Syntaxe V4)
+    // Generate embedding
     const embeddingResponse = await openai.embeddings.create({
       model: 'text-embedding-3-small',
       input: `QCM examen médecine sur ${module}`,
     });
 
-    // Note: En V4, la structure est embeddingResponse.data[0].embedding
     const embedding = embeddingResponse.data[0].embedding;
 
+    // Search relevant documents
     const { data: chunks, error: rpcError } = await supabaseClient.rpc('match_documents', {
       query_embedding: embedding,
       match_threshold: 0.3,
@@ -74,48 +70,61 @@ serve(async (req) => {
       filter_year: filterYear
     });
 
-    if (rpcError) throw new Error("Erreur RPC Supabase: " + rpcError.message);
+    if (rpcError) {
+      console.error("RPC Error:", rpcError);
+      throw new Error("Erreur RPC Supabase: " + rpcError.message);
+    }
 
-    const context = chunks?.map((c: any) => c.content).join('\n---\n') || "";
+    let context = chunks?.map((c: any) => c.content).join('\n---\n') || "";
 
-    // 5. Génération du Quiz (Syntaxe V4)
-    const promptSystem = `Tu es un professeur de médecine.
-    CONTEXTE : ${context}
-    TÂCHE : Génère 5 questions QCM difficiles et variées sur le module "${module}".
-    
-    FORMAT DE SORTIE (JSON Array strict) : [ { "question_text": "...", "options": [{"id": "A", "text": "..."}, {"id": "B", "text": "..."}], "correct_option_id": "A", "explanation": "Explication détaillée citant le contexte." }, ... ]`;
+    // Limit context to avoid timeouts
+    if (context.length > 10000) {
+      context = context.substring(0, 10000) + "...";
+    }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: promptSystem }
-      ],
-      temperature: 0.7,
-      response_format: { type: "json_object" }
-    });
+    // Generate quiz with OpenAI
+    let completion;
+    try {
+      const promptSystem = `Tu es un professeur de médecine.
+CONTEXTE : ${context}
+TÂCHE : Génère 5 questions QCM difficiles et variées sur le module "${module}".
+
+FORMAT DE SORTIE (JSON Array strict) : [ { "question_text": "...", "options": [{"id": "A", "text": "..."}, {"id": "B", "text": "..."}], "correct_option_id": "A", "explanation": "Explication détaillée citant le contexte." }, ... ]`;
+
+      completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: promptSystem }
+        ],
+        temperature: 0.7,
+        response_format: { type: "json_object" }
+      });
+    } catch (openaiError: any) {
+      console.error("OpenAI Error:", openaiError.message);
+      throw new Error("Erreur génération OpenAI: " + openaiError.message);
+    }
 
     let content = completion.choices[0].message.content || "[]";
-
-    // Nettoyage JSON robuste
     content = content.replace(/```json/g, '').replace(/```/g, '').trim();
 
+    // Parse JSON response
     let questionsArray;
     try {
       const parsed = JSON.parse(content);
-      // Si c'est un objet avec une clé 'questions', on prend le tableau
       if (!Array.isArray(parsed) && parsed.questions) {
         questionsArray = parsed.questions;
       } else if (Array.isArray(parsed)) {
         questionsArray = parsed;
       } else {
+        console.error("Unexpected JSON format:", Object.keys(parsed));
         questionsArray = [];
       }
     } catch (e) {
-      console.error("Erreur parsing JSON OpenAI", e);
+      console.error("JSON parsing error:", e);
       throw new Error("Erreur format JSON IA");
     }
 
-    // 6. Sauvegarde
+    // Save questions to database
     if (questionsArray.length > 0) {
       const questionsToInsert = questionsArray.map((q: any) => ({
         quiz_id: quizId,
@@ -129,7 +138,12 @@ serve(async (req) => {
         .from('quiz_questions')
         .insert(questionsToInsert);
 
-      if (questionsError) throw new Error("Erreur Insert Questions: " + questionsError.message);
+      if (questionsError) {
+        console.error("Insert Questions Error:", questionsError);
+        throw new Error("Erreur Insert Questions: " + questionsError.message);
+      }
+    } else {
+      throw new Error("Aucune question générée");
     }
 
     return new Response(JSON.stringify({ quizId }), {

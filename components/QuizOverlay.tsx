@@ -48,12 +48,11 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
             setCurrentState('LOADING');
             setLoadingMessage('Consulting medical archives...');
 
-            // 1. Get real user session or null for anonymous users
+            // Get real user session or null for anonymous users
             const { data: { session } } = await supabase.auth.getSession();
             const realUserId = session?.user?.id || null;
 
-            // 2. Call Edge Function to generate quiz
-            console.log('🚀 Calling Edge Function...');
+            // Call Edge Function to generate quiz
             const { data: funcData, error: funcError } = await supabase.functions.invoke('generate-quiz', {
                 body: {
                     module: moduleTitle,
@@ -62,25 +61,20 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
                 }
             });
 
-            console.log('📦 Edge Function response:', { funcData, funcError });
             if (funcError) throw funcError;
 
             setLoadingMessage('Loading questions...');
             const quizId = funcData.quizId;
-            console.log('🆔 Quiz ID received:', quizId);
 
-            // 2. Fetch the generated questions from Supabase
-            console.log('🔍 Fetching questions from database...');
+            // Fetch the generated questions from Supabase
             const { data: questionsData, error: dbError } = await supabase
                 .from('quiz_questions')
                 .select('*')
                 .eq('quiz_id', quizId);
 
-            console.log('📋 Questions fetched:', { count: questionsData?.length, error: dbError });
             if (dbError) throw dbError;
 
             if (questionsData && questionsData.length > 0) {
-                console.log('✅ Quiz loaded successfully with', questionsData.length, 'questions');
                 setQuestions(questionsData);
                 setCurrentState('PLAYING');
             } else {
