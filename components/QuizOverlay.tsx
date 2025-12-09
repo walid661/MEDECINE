@@ -47,14 +47,17 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
         try {
             setCurrentState('LOADING');
             setLoadingMessage('Consulting medical archives...');
-            
-            // 1. Call Edge Function to generate quiz
-            // Using a dummy UUID for userId since Auth isn't fully set up in this context
+
+            // 1. Get real user session or null for anonymous users
+            const { data: { session } } = await supabase.auth.getSession();
+            const realUserId = session?.user?.id || null;
+
+            // 2. Call Edge Function to generate quiz
             const { data: funcData, error: funcError } = await supabase.functions.invoke('generate-quiz', {
-                body: { 
-                    module: moduleTitle, 
-                    userId: '00000000-0000-0000-0000-000000000000', 
-                    mode: 'practice' 
+                body: {
+                    module: moduleTitle,
+                    userId: realUserId,
+                    mode: 'practice'
                 }
             });
 
@@ -86,7 +89,7 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
 
     const handleCheckAnswer = () => {
         if (!selectedOptionId) return;
-        
+
         const currentQuestion = questions[currentIndex];
         if (selectedOptionId === currentQuestion.correct_option_id) {
             setScore(prev => prev + 1);
@@ -140,7 +143,7 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
                 <div className="w-24 h-24 bg-med-gold rounded-full flex items-center justify-center text-white mb-6 shadow-lg transform rotate-3">
                     <Trophy size={48} fill="currentColor" />
                 </div>
-                
+
                 <h2 className="text-3xl font-black text-med-text mb-2">Quiz Complete!</h2>
                 <p className="text-gray-400 font-bold text-lg mb-8">
                     You scored {score} out of {questions.length}
@@ -165,30 +168,30 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
     };
 
     return (
-        <div 
+        <div
             className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'}`}
         >
-            <div 
+            <div
                 className={`w-full max-w-2xl px-4 transition-all duration-300 transform ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-10'}`}
             >
                 <JuicyCard className="relative overflow-hidden flex flex-col min-h-[600px] border-b-[6px] p-0">
-                    
+
                     {/* Header (Only visible if not loading/results) */}
                     {(currentState === 'PLAYING' || currentState === 'FEEDBACK') && (
                         <div className="p-5 pb-0">
                             <div className="flex items-center justify-between mb-6">
-                                <button 
+                                <button
                                     onClick={onClose}
                                     className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400"
                                 >
                                     <X size={28} strokeWidth={3} />
                                 </button>
-                                
+
                                 <div className="flex-1 mx-4">
-                                    <ProgressBar 
-                                        value={currentIndex + 1} 
-                                        max={questions.length} 
-                                        color="primary" 
+                                    <ProgressBar
+                                        value={currentIndex + 1}
+                                        max={questions.length}
+                                        color="bg-med-primary"
                                     />
                                 </div>
 
@@ -205,21 +208,21 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
                         {currentState === 'LOADING' && renderLoading()}
                         {currentState === 'ERROR' && renderError()}
                         {currentState === 'RESULTS' && renderResults()}
-                        
+
                         {(currentState === 'PLAYING' || currentState === 'FEEDBACK') && currentQuestion && (
                             <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <h2 className="text-2xl font-extrabold text-med-text text-center mb-8">
-                                   {currentQuestion.question_text}
+                                    {currentQuestion.question_text}
                                 </h2>
 
                                 <div className="grid grid-cols-1 gap-3 mb-6">
                                     {currentQuestion.options.map((option, idx) => {
                                         const isSelected = selectedOptionId === option.id;
                                         const isCorrectOption = option.id === currentQuestion.correct_option_id;
-                                        
+
                                         // Dynamic styling based on state using new semantic variants
                                         let variant: any = 'outline';
-                                        
+
                                         if (currentState === 'FEEDBACK') {
                                             if (isCorrectOption) {
                                                 variant = 'primary'; // Correct answer in Green
@@ -233,9 +236,9 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
                                         }
 
                                         return (
-                                            <JuicyButton 
+                                            <JuicyButton
                                                 key={idx}
-                                                variant={variant} 
+                                                variant={variant}
                                                 className={`
                                                     h-auto min-h-[64px] py-4 text-lg justify-start px-6 relative group whitespace-normal text-left leading-tight
                                                     ${currentState === 'FEEDBACK' && !isCorrectOption && !isSelected ? 'opacity-50' : ''}
@@ -261,13 +264,13 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
                     {/* Footer Actions */}
                     <div className="mt-auto border-t-2 border-gray-100">
                         {currentState === 'PLAYING' && (
-                             <div className="p-5 flex justify-between items-center bg-white">
+                            <div className="p-5 flex justify-between items-center bg-white">
                                 <JuicyButton variant="ghost" size="md" className="text-gray-400 hover:text-gray-600">
                                     Skip
                                 </JuicyButton>
-                                <JuicyButton 
-                                    variant={selectedOptionId ? 'primary' : 'outline'} 
-                                    size="lg" 
+                                <JuicyButton
+                                    variant={selectedOptionId ? 'primary' : 'outline'}
+                                    size="lg"
                                     className="px-8 min-w-[150px]"
                                     disabled={!selectedOptionId}
                                     onClick={handleCheckAnswer}
@@ -297,9 +300,9 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
                                         </div>
                                     </div>
                                 </div>
-                                <JuicyButton 
-                                    variant={isCorrect ? 'primary' : 'danger'} 
-                                    fullWidth 
+                                <JuicyButton
+                                    variant={isCorrect ? 'primary' : 'danger'}
+                                    fullWidth
                                     onClick={handleNext}
                                     className="flex items-center justify-center gap-2"
                                 >
