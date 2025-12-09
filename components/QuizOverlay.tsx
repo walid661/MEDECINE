@@ -182,22 +182,22 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
 
     return (
         <div
-            className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'}`}
+            className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'} p-4`}
         >
             <div
-                className={`w-full max-w-2xl px-4 max-h-[90vh] transition-all duration-300 transform ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-10'}`}
+                className={`w-full max-w-2xl max-h-[85vh] transition-all duration-300 transform ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-10'}`}
             >
-                <JuicyCard className="relative overflow-hidden flex flex-col max-h-[90vh] border-b-[6px] p-0">
+                <JuicyCard className="relative overflow-hidden flex flex-col h-full border-b-[6px] p-0">
 
                     {/* Header (Only visible if not loading/results) */}
                     {(currentState === 'PLAYING' || currentState === 'FEEDBACK') && (
-                        <div className="p-5 pb-0 flex-shrink-0">
-                            <div className="flex items-center justify-between mb-6">
+                        <div className="p-4 pb-0 flex-shrink-0">
+                            <div className="flex items-center justify-between mb-4">
                                 <button
                                     onClick={onClose}
                                     className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400"
                                 >
-                                    <X size={28} strokeWidth={3} />
+                                    <X size={24} strokeWidth={3} />
                                 </button>
 
                                 <div className="flex-1 mx-4">
@@ -209,44 +209,43 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
                                 </div>
 
                                 <div className="flex items-center gap-2 text-med-red">
-                                    <Heart size={24} fill="currentColor" />
-                                    <span className="font-extrabold text-lg">5</span>
+                                    <Heart size={20} fill="currentColor" />
+                                    <span className="font-extrabold text-base">5</span>
                                 </div>
                             </div>
                         </div>
                     )}
 
                     {/* Main Content Area */}
-                    <div className="flex-1 flex flex-col p-5 pt-0 overflow-y-auto">
+                    <div className="flex-1 flex flex-col p-4 pt-0 overflow-y-auto min-h-0">
 
                         {currentState === 'LOADING' && renderLoading()}
                         {currentState === 'ERROR' && renderError()}
                         {currentState === 'RESULTS' && renderResults()}
 
                         {(currentState === 'PLAYING' || currentState === 'FEEDBACK') && currentQuestion && (
-                            <div className="flex-1 flex flex-col justify-center animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <h2 className="text-2xl font-extrabold text-med-text text-center mb-8">
+                            <div className="flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <h2 className="text-xl font-extrabold text-med-text text-center mb-4">
                                     {currentQuestion.question_text}
                                 </h2>
 
-                                <div className="grid grid-cols-1 gap-3 mb-6">
+                                <div className="grid grid-cols-1 gap-2 mb-4">
                                     {currentQuestion.options.map((option, idx) => {
                                         const isSelected = selectedOptionId === option.id;
                                         const isCorrectOption = option.id === currentQuestion.correct_option_id;
 
-                                        // Dynamic styling based on state using new semantic variants
                                         let variant: any = 'outline';
 
                                         if (currentState === 'FEEDBACK') {
                                             if (isCorrectOption) {
-                                                variant = 'primary'; // Correct answer in Green
+                                                variant = 'primary';
                                             } else if (isSelected && !isCorrectOption) {
-                                                variant = 'danger'; // Wrong selection in Red
+                                                variant = 'danger';
                                             } else {
-                                                variant = 'outline'; // Fade others
+                                                variant = 'outline';
                                             }
                                         } else if (isSelected) {
-                                            variant = 'secondary'; // Selected state in Blue
+                                            variant = 'secondary';
                                         }
 
                                         return (
@@ -254,14 +253,14 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
                                                 key={idx}
                                                 variant={variant}
                                                 className={`
-                                                    h-auto min-h-[64px] py-4 text-lg justify-start px-6 relative group whitespace-normal text-left leading-tight
+                                                    h-auto min-h-[48px] py-2 text-base justify-start px-4 relative group whitespace-normal text-left leading-tight
                                                     ${currentState === 'FEEDBACK' && !isCorrectOption && !isSelected ? 'opacity-50' : ''}
                                                 `}
                                                 onClick={() => currentState === 'PLAYING' && setSelectedOptionId(option.id)}
                                                 disabled={currentState === 'FEEDBACK'}
                                             >
                                                 <div className={`
-                                                    w-8 h-8 min-w-[32px] rounded-lg border-2 mr-4 flex items-center justify-center font-bold text-sm
+                                                    w-7 h-7 min-w-[28px] rounded-lg border-2 mr-3 flex items-center justify-center font-bold text-sm
                                                     ${isSelected || (currentState === 'FEEDBACK' && isCorrectOption) ? 'border-white/40 text-white' : 'border-gray-200 text-gray-300'}
                                                 `}>
                                                     {option.id}
@@ -276,7 +275,8 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="mt-auto border-t-2 border-gray-100">
+                    <div className="flex-shrink-0 border-t-2 border-gray-100">
+
                         {currentState === 'PLAYING' && (
                             <div className="p-5 flex justify-between items-center bg-white">
                                 <JuicyButton variant="ghost" size="md" className="text-gray-400 hover:text-gray-600">
