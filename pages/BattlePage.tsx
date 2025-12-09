@@ -1,48 +1,255 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
 import { JuicyCard, JuicyButton } from '../components/ui/JuicyUI';
-import { Swords, Users, Plus, Trophy } from 'lucide-react';
+import { Swords, Users, Plus, Loader2, Copy, Check } from 'lucide-react';
+
+type BattleState = 'MENU' | 'LOBBY' | 'JOIN';
 
 const BattlePage: React.FC = () => {
+    const [state, setState] = useState<BattleState>('MENU');
+    const [battleCode, setBattleCode] = useState('');
+    const [joinCode, setJoinCode] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [copied, setCopied] = useState(false);
+    const [battleId, setBattleId] = useState<string | null>(null);
+
+    const generateCode = () => {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let code = '';
+        for (let i = 0; i < 4; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return code;
+    };
+
+    const handleCreateBattle = async () => {
+        setLoading(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('Not authenticated');
+
+            const code = generateCode();
+
+            const { data, error } = await supabase
+                .from('battles')
+                .insert({
+                    code: code,
+                    host_id: user.id,
+                    status: 'WAITING'
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            setBattleCode(code);
+            setBattleId(data.id);
+            setState('LOBBY');
+
+            listenForOpponent(data.id);
+        } catch (err: any) {
+            console.error('Create battle error:', err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const listenForOpponent = (id: string) => {
+        const channel = supabase
+            .channel(`battle:${id}`)
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'battles',
+                filter: `id=eq.${id}`
+            }, (payload: any) => {
+                if (payload.new.opponent_id) {
+                    console.log('Opponent joined!', payload.new);
+                    // TODO: Start the quiz
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    };
+
+    const handleJoinBattle = async () => {
+        setLoading(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('Not authenticated');
+
+            const { data: battle, error: fetchError } = await supabase
+                .from('battles')
+                .select('*')
+                .eq('code', joinCode.toUpperCase())
+                .eq('status', 'WAITING')
+                .single();
+
+            if (fetchError || !battle) {
+                throw new Error('Battle not found or already started');
+            }
+
+            const { error: updateError } = await supabase
+                .from('battles')
+                .update({
+                    opponent_id: user.id,
+                    status: 'PLAYING'
+                })
+                .eq('id', battle.id);
+
+            if (updateError) throw updateError;
+
+            console.log('Joined battle successfully!');
+            // TODO: Navigate to quiz
+        } catch (err: any) {
+            console.error('Join battle error:', err.message);
+            alert(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const copyCode = () => {
+        navigator.clipboard.writeText(battleCode);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    if (state === 'LOBBY') {
+        return (
+            <div className="flex-1 px-4 md:px-8 pb-12 w-full max-w-2xl mx-auto flex items-center justify-center">
+                <JuicyCard className="w-full text-center p-12">
+                    <div className="mb-8">
+                        <div className="w-24 h-24 bg-med-purple/10 rounded-full flex items-center justify-center text-med-purple mx-auto mb-6">
+                            <Swords size={48} />
+                        </div>
+                        <h2 className="text-3xl font-black text-med-text mb-2">
+                            Battle Room Created
+                        </h2>
+                        <p className="text-gray-500 font-semibold">
+                            Share this code with your opponent
+                        </p>
+                    </div>
+
+                    <div className="mb-8">
+                        <div className="flex items-center justify-center gap-2 mb-4">
+                            <div className="text-6xl font-black text-med-purple tracking-widest bg-med-purple/10 px-8 py-6 rounded-2xl border-2 border-med-purple/20">
+                                {battleCode}
+                            </div>
+                            <button
+                                onClick={copyCode}
+                                className="p-4 rounded-xl bg-med-purple/10 hover:bg-med-purple/20 transition-colors"
+                            >
+                                {copied ? <Check size={24} className="text-med-purple" /> : <Copy size={24} className="text-med-purple" />}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-center gap-2 text-gray-400 font-bold mb-6">
+                        <Loader2 size={20} className="animate-spin" />
+                        <span>Waiting for opponent...</span>
+                    </div>
+
+                    <JuicyButton
+                        variant="outline"
+                        size="md"
+                        onClick={() => setState('MENU')}
+                    >
+                        Cancel
+                    </JuicyButton>
+                </JuicyCard>
+            </div>
+        );
+    }
+
+    if (state === 'JOIN') {
+        return (
+            <div className="flex-1 px-4 md:px-8 pb-12 w-full max-w-2xl mx-auto flex items-center justify-center">
+                <JuicyCard className="w-full p-12">
+                    <div className="mb-8 text-center">
+                        <div className="w-24 h-24 bg-med-blue/10 rounded-full flex items-center justify-center text-med-blue mx-auto mb-6">
+                            <Users size={48} />
+                        </div>
+                        <h2 className="text-3xl font-black text-med-text mb-2">
+                            Join Battle
+                        </h2>
+                        <p className="text-gray-500 font-semibold">
+                            Enter the 4-character room code
+                        </p>
+                    </div>
+
+                    <div className="mb-6">
+                        <input
+                            type="text"
+                            value={joinCode}
+                            onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                            maxLength={4}
+                            placeholder="XXXX"
+                            className="w-full px-8 py-6 text-4xl font-black text-center rounded-2xl border-2 border-med-border focus:border-med-blue focus:outline-none tracking-widest uppercase"
+                        />
+                    </div>
+
+                    <div className="flex gap-4">
+                        <JuicyButton
+                            variant="outline"
+                            size="lg"
+                            fullWidth
+                            onClick={() => setState('MENU')}
+                        >
+                            Cancel
+                        </JuicyButton>
+                        <JuicyButton
+                            variant="secondary"
+                            size="lg"
+                            fullWidth
+                            onClick={handleJoinBattle}
+                            disabled={joinCode.length !== 4 || loading}
+                        >
+                            {loading ? 'Joining...' : 'Join Battle'}
+                        </JuicyButton>
+                    </div>
+                </JuicyCard>
+            </div>
+        );
+    }
+
     return (
         <div className="flex-1 px-4 md:px-8 pb-12 w-full max-w-5xl mx-auto">
-            
-            {/* Header */}
             <div className="mb-8 flex items-center gap-4">
                 <div className="p-3 bg-med-purple rounded-2xl text-white shadow-lg transform -rotate-3">
                     <Swords size={32} />
                 </div>
                 <div>
-                     <h2 className="text-3xl font-extrabold text-med-text">Medical Arena</h2>
-                     <p className="text-gray-400 font-bold">Challenge peers in real-time battles.</p>
+                    <h2 className="text-3xl font-extrabold text-med-text">Medical Arena</h2>
+                    <p className="text-gray-400 font-bold">Challenge peers in real-time battles</p>
                 </div>
             </div>
 
-            {/* Main Action Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-                
-                {/* Create Room Card */}
-                <JuicyCard 
-                    className="group min-h-[300px] flex flex-col items-center justify-center text-center gap-6 hover:border-med-purple hover:bg-med-purple/5 transition-colors"
-                    onClick={() => console.log('Create Room')}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <JuicyCard
+                    className="group min-h-[300px] flex flex-col items-center justify-center text-center gap-6 hover:border-med-purple hover:bg-med-purple/5 transition-colors cursor-pointer"
+                    onClick={handleCreateBattle}
                 >
                     <div className="w-24 h-24 bg-med-purple/10 rounded-full flex items-center justify-center text-med-purple group-hover:scale-110 transition-transform duration-300">
-                        <Plus size={48} strokeWidth={3} />
+                        {loading ? <Loader2 size={48} className="animate-spin" /> : <Plus size={48} strokeWidth={3} />}
                     </div>
                     <div>
                         <h3 className="text-2xl font-extrabold text-med-text mb-2">Create Room</h3>
                         <p className="text-gray-400 font-semibold px-8">
-                            Host a private battle and invite your study group.
+                            Host a private battle and invite your study group
                         </p>
                     </div>
-                    <JuicyButton variant="purple" size="lg" className="mt-2">
-                        Start Hosting
+                    <JuicyButton variant="purple" size="lg" className="mt-2" disabled={loading}>
+                        {loading ? 'Creating...' : 'Start Hosting'}
                     </JuicyButton>
                 </JuicyCard>
 
-                {/* Join Friend Card */}
-                <JuicyCard 
-                    className="group min-h-[300px] flex flex-col items-center justify-center text-center gap-6 hover:border-med-blue hover:bg-med-blue/5 transition-colors"
-                    onClick={() => console.log('Join Room')}
+                <JuicyCard
+                    className="group min-h-[300px] flex flex-col items-center justify-center text-center gap-6 hover:border-med-blue hover:bg-med-blue/5 transition-colors cursor-pointer"
+                    onClick={() => setState('JOIN')}
                 >
                     <div className="w-24 h-24 bg-med-blue/10 rounded-full flex items-center justify-center text-med-blue group-hover:scale-110 transition-transform duration-300">
                         <Users size={48} strokeWidth={3} />
@@ -50,59 +257,14 @@ const BattlePage: React.FC = () => {
                     <div>
                         <h3 className="text-2xl font-extrabold text-med-text mb-2">Join Friend</h3>
                         <p className="text-gray-400 font-semibold px-8">
-                            Enter a room code to join an existing battle.
+                            Enter a room code to join an existing battle
                         </p>
                     </div>
-                    <JuicyButton variant="blue" size="lg" className="mt-2">
+                    <JuicyButton variant="secondary" size="lg" className="mt-2">
                         Enter Code
                     </JuicyButton>
                 </JuicyCard>
-
             </div>
-
-            {/* Recent Battles or Rankings teaser */}
-            <div className="border-t-2 border-med-border pt-8">
-                 <div className="flex items-center gap-2 mb-6">
-                    <Trophy size={24} className="text-med-gold" />
-                    <h3 className="text-xl font-extrabold text-med-text">Your Recent Battles</h3>
-                 </div>
-                 
-                 <div className="space-y-4">
-                     {/* Mock History Item */}
-                     <div className="flex items-center justify-between p-4 bg-white border-2 border-med-border rounded-2xl">
-                         <div className="flex items-center gap-4">
-                             <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center font-bold text-gray-400">
-                                 VS
-                             </div>
-                             <div>
-                                 <h4 className="font-extrabold text-med-text">Dr. Sarah</h4>
-                                 <p className="text-xs font-bold text-gray-400 uppercase">Cardiology • Victory</p>
-                             </div>
-                         </div>
-                         <div className="text-right">
-                             <span className="block font-black text-med-primary">+25 XP</span>
-                             <span className="text-xs font-bold text-gray-300">2 hours ago</span>
-                         </div>
-                     </div>
-
-                     <div className="flex items-center justify-between p-4 bg-white border-2 border-med-border rounded-2xl opacity-70">
-                         <div className="flex items-center gap-4">
-                             <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center font-bold text-gray-400">
-                                 VS
-                             </div>
-                             <div>
-                                 <h4 className="font-extrabold text-med-text">Dr. Ahmed</h4>
-                                 <p className="text-xs font-bold text-gray-400 uppercase">Neurology • Defeat</p>
-                             </div>
-                         </div>
-                         <div className="text-right">
-                             <span className="block font-black text-gray-400">+5 XP</span>
-                             <span className="text-xs font-bold text-gray-300">Yesterday</span>
-                         </div>
-                     </div>
-                 </div>
-            </div>
-
         </div>
     );
 };

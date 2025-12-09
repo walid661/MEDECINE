@@ -52,11 +52,24 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
             const { data: { session } } = await supabase.auth.getSession();
             const realUserId = session?.user?.id || null;
 
+            // Fetch user profile to get year for RAG filtering
+            let userYear = null;
+            if (realUserId) {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('year_of_study')
+                    .eq('id', realUserId)
+                    .single();
+
+                userYear = profile?.year_of_study || null;
+            }
+
             // Call Edge Function to generate quiz
             const { data: funcData, error: funcError } = await supabase.functions.invoke('generate-quiz', {
                 body: {
                     module: moduleTitle,
                     userId: realUserId,
+                    userYear: userYear,
                     mode: 'practice'
                 }
             });

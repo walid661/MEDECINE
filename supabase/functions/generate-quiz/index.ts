@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { module, userId, mode } = await req.json()
+    const { module, userId, mode, userYear } = await req.json()
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -43,7 +43,7 @@ serve(async (req) => {
 
     // Intelligent module mapping
     let searchKeyword = module;
-    let filterYear = null;
+    let filterYear = userYear || null;
 
     if (module === 'Anatomie 1') searchKeyword = 'Anatomie 1';
     else if (module === 'Anatomie 2') searchKeyword = 'Anatomie l';
