@@ -228,18 +228,16 @@ const BattleQuiz: React.FC = () => {
     // RESULTS STATE
     if (gameState === 'RESULTS' && myScore !== null) {
         // Build leaderboard with both players
-        const { data: { user } } = await supabase.auth.getUser();
-
         const leaderboard = [
             {
-                name: isHost ? 'You' : 'Host',
+                name: 'You',
                 score: myScore,
                 isMe: true
             },
             {
-                name: isHost ? 'Opponent' : 'You',
+                name: 'Opponent',
                 score: opponentScore,
-                isMe: !isHost
+                isMe: false
             }
         ].filter(p => p.score !== null) // Only show players who have finished
             .sort((a, b) => (b.score || 0) - (a.score || 0)); // Sort by score descending
@@ -264,14 +262,14 @@ const BattleQuiz: React.FC = () => {
                                 <div
                                     key={index}
                                     className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${player.isMe
-                                            ? 'bg-med-primary/10 border-med-primary shadow-lg scale-105'
-                                            : 'bg-white border-gray-200'
+                                        ? 'bg-med-primary/10 border-med-primary shadow-lg scale-105'
+                                        : 'bg-white border-gray-200'
                                         }`}
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-lg ${index === 0 ? 'bg-med-gold text-white' :
-                                                index === 1 ? 'bg-gray-300 text-gray-700' :
-                                                    'bg-gray-200 text-gray-600'
+                                            index === 1 ? 'bg-gray-300 text-gray-700' :
+                                                'bg-gray-200 text-gray-600'
                                             }`}>
                                             {index + 1}
                                         </div>
