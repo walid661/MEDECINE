@@ -32,6 +32,20 @@ const BattleQuiz: React.FC = () => {
     const [isHost, setIsHost] = useState(false);
     const [myScore, setMyScore] = useState<number | null>(null);
     const [opponentScore, setOpponentScore] = useState<number | null>(null);
+    const [isStarting, setIsStarting] = useState(true);
+    const [countdown, setCountdown] = useState(3);
+
+    // Countdown before start
+    useEffect(() => {
+        if (isStarting && gameState === 'PLAYING') {
+            if (countdown > 0) {
+                const timer = setTimeout(() => setCountdown(prev => prev - 1), 1000);
+                return () => clearTimeout(timer);
+            } else {
+                setIsStarting(false);
+            }
+        }
+    }, [isStarting, countdown, gameState]);
 
     // Load battle data and questions
     useEffect(() => {
@@ -40,7 +54,7 @@ const BattleQuiz: React.FC = () => {
 
     // Timer countdown
     useEffect(() => {
-        if (gameState !== 'PLAYING') return;
+        if (gameState !== 'PLAYING' || isStarting) return;
 
         const interval = setInterval(() => {
             setTimeRemaining((prev) => {
@@ -53,7 +67,7 @@ const BattleQuiz: React.FC = () => {
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [gameState]);
+    }, [gameState, isStarting]);
 
     // Listen for opponent score updates
     useEffect(() => {
@@ -208,7 +222,9 @@ const BattleQuiz: React.FC = () => {
                         </div>
                     )}
                     {opponentScore === null && (
-                        <p className="text-gray-400 font-semibold mt-4">Waiting for opponent to finish...</p>
+                        <div className="mt-6 p-4 bg-gray-100 rounded-xl">
+                            <p className="text-gray-400 font-semibold">⏳ Opponent still in progress...</p>
+                        </div>
                     )}
                 </JuicyCard>
 
@@ -240,8 +256,8 @@ const BattleQuiz: React.FC = () => {
                                                 <div
                                                     key={opt.id}
                                                     className={`p-3 rounded-lg border-2 ${optStatus === 'correct' ? 'bg-med-primary/10 border-med-primary' :
-                                                            optStatus === 'incorrect' ? 'bg-med-red/10 border-med-red' :
-                                                                'bg-gray-50 border-gray-200'
+                                                        optStatus === 'incorrect' ? 'bg-med-red/10 border-med-red' :
+                                                            'bg-gray-50 border-gray-200'
                                                         }`}
                                                 >
                                                     <span className="font-bold mr-2">{opt.id}.</span>
@@ -275,6 +291,25 @@ const BattleQuiz: React.FC = () => {
     const selectedAnswer = userAnswers[currentIndex];
     const progress = ((currentIndex + 1) / questions.length) * 100;
     const answeredCount = Object.keys(userAnswers).length;
+
+    // COUNTDOWN OVERLAY
+    if (isStarting) {
+        return (
+            <div className="fixed inset-0 z-50 bg-gradient-to-br from-med-primary to-med-purple flex items-center justify-center">
+                <div className="text-center animate-in zoom-in duration-500" key={countdown}>
+                    {countdown > 0 ? (
+                        <div className="text-[200px] font-black text-white drop-shadow-2xl">
+                            {countdown}
+                        </div>
+                    ) : (
+                        <div className="text-8xl font-black text-white drop-shadow-2xl animate-pulse">
+                            GO! 🚀
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex-1 px-4 md:px-8 pb-12 w-full max-w-3xl mx-auto">
@@ -313,8 +348,8 @@ const BattleQuiz: React.FC = () => {
                                 key={option.id}
                                 onClick={() => handleAnswerSelect(option.id)}
                                 className={`w-full p-4 rounded-xl border-2 text-left font-bold transition-all ${isSelected
-                                        ? 'bg-med-blue text-white border-med-blue'
-                                        : 'bg-white text-gray-700 border-gray-200 hover:border-med-blue hover:bg-med-blue/5'
+                                    ? 'bg-med-blue text-white border-med-blue'
+                                    : 'bg-white text-gray-700 border-gray-200 hover:border-med-blue hover:bg-med-blue/5'
                                     }`}
                             >
                                 <span className="mr-3">{option.id}.</span>
