@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import { JuicyCard, JuicyButton } from '../components/ui/JuicyUI';
 import { Swords, Users, Plus, Loader2, Copy, Check, Heart, Stethoscope, Brain, Bone, Pill, Microscope } from 'lucide-react';
 
-type BattleState = 'MENU' | 'MODULE_SELECT' | 'LOBBY' | 'JOIN';
+type BattleState = 'MENU' | 'MODULE_SELECT' | 'LOBBY' | 'LOBBY_WAITING_HOST' | 'JOIN';
 
 // Available modules for battle
 const BATTLE_MODULES = [
@@ -25,6 +25,9 @@ const BattlePage: React.FC = () => {
     const [copied, setCopied] = useState(false);
     const [battleId, setBattleId] = useState<string | null>(null);
     const [selectedModule, setSelectedModule] = useState<string>('');
+    const [hostProfile, setHostProfile] = useState<any>(null);
+    const [opponentProfile, setOpponentProfile] = useState<any>(null);
+    const [opponentReady, setOpponentReady] = useState(false);
 
     const generateCode = () => {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -90,51 +93,137 @@ const BattlePage: React.FC = () => {
         }
     };
 
-    // ROBUST OPPONENT DETECTION: Realtime + Polling
+    // LOAD PROFILES when in lobby
+    useEffect(() => {
+        const loadProfiles = async () => {
+            if (state === 'LOBBY' && battleId) {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) return;
+
+                // Load my profile
+                const { data: myProfile } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+                setHostProfile(myProfile);
+            }
+        };
+        loadProfiles();
+    }, [state, battleId]);
+
+    // HOST: Listen for opponent joining
     useEffect(() => {
         let channel: any;
         let interval: any;
 
         if (state === 'LOBBY' && battleId) {
-            console.log('🔒 Entering Lobby watch mode for Battle:', battleId);
+            console.log('🔒 Host waiting for opponent:', battleId);
 
-            // STRATEGY 1: REALTIME (Fast)
+            // REALTIME: Detect opponent joining
             channel = supabase
-                .channel(`battle-lobby:${battleId}`)
+                .channel(`battle-host:${battleId}`)
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'battles',
+                    filter: `id=eq.${battleId}`
+                }, async (payload: any) => {
+                    console.log('⚡ Opponent joined:', payload.new);
+                    if (payload.new.opponent_id) {
+                        setOpponentReady(true);
+                        // Load opponent profile
+                        const { data: oppProfile } = await supabase
+                            .from('profiles')
+                            .select('*')
+                            .eq('id', payload.new.opponent_id)
+                            .single();
+                        setOpponentProfile(oppProfile);
+                    }
+                    // If status becomes PLAYING, redirect
+                    if (payload.new.status === 'PLAYING') {
+                        navigate(`/battle-quiz/${battleId}`);
+                    }
+                })
+                .subscribe();
+
+            // POLLING: Backup
+            interval = setInterval(async () => {
+                const { data } = await supabase
+                    .from('battles')
+                    .select('status, opponent_id')
+                    .eq('id', battleId)
+                    .single();
+
+                if (data) {
+                    if (data.opponent_id && !opponentReady) {
+                        setOpponentReady(true);
+                        const { data: oppProfile } = await supabase
+                            .from('profiles')
+                            .select('*')
+                            .eq('id', data.opponent_id)
+                            .single();
+                        setOpponentProfile(oppProfile);
+                    }
+                    if (data.status === 'PLAYING') {
+                        navigate(`/battle-quiz/${battleId}`);
+                    }
+                }
+            }, 3000);
+        }
+
+        return () => {
+            if (channel) supabase.removeChannel(channel);
+            if (interval) clearInterval(interval);
+        };
+    }, [state, battleId, navigate, opponentReady]);
+
+    // OPPONENT: Listen for host starting game
+    useEffect(() => {
+        let channel: any;
+
+        if (state === 'LOBBY_WAITING_HOST' && battleId) {
+            console.log('⏳ Opponent waiting for host to start:', battleId);
+
+            channel = supabase
+                .channel(`battle-opponent:${battleId}`)
                 .on('postgres_changes', {
                     event: 'UPDATE',
                     schema: 'public',
                     table: 'battles',
                     filter: `id=eq.${battleId}`
                 }, (payload: any) => {
-                    console.log('⚡ Realtime Update received:', payload.new);
-                    if (payload.new.status === 'PLAYING' || payload.new.opponent_id) {
+                    if (payload.new.status === 'PLAYING') {
+                        console.log('🎮 Host started! Redirecting...');
                         navigate(`/battle-quiz/${battleId}`);
                     }
                 })
                 .subscribe();
-
-            // STRATEGY 2: POLLING (Backup if Realtime fails)
-            interval = setInterval(async () => {
-                const { data, error } = await supabase
-                    .from('battles')
-                    .select('status, opponent_id')
-                    .eq('id', battleId)
-                    .single();
-
-                if (data && (data.status === 'PLAYING' || data.opponent_id)) {
-                    console.log('🔄 Polling detected opponent! Redirecting...');
-                    navigate(`/battle-quiz/${battleId}`);
-                }
-            }, 3000); // Check every 3 seconds
         }
 
-        // Cleanup
         return () => {
             if (channel) supabase.removeChannel(channel);
-            if (interval) clearInterval(interval);
         };
     }, [state, battleId, navigate]);
+
+    const handleStartBattle = async () => {
+        if (!battleId) return;
+        setLoading(true);
+        try {
+            const { error } = await supabase
+                .from('battles')
+                .update({ status: 'PLAYING' })
+                .eq('id', battleId);
+
+            if (error) throw error;
+
+            // Redirect will happen via Realtime listener
+        } catch (err: any) {
+            console.error('Start battle error:', err.message);
+            alert('Failed to start battle');
+            setLoading(false);
+        }
+    };
 
     const handleJoinBattle = async () => {
         setLoading(true);
@@ -153,18 +242,31 @@ const BattlePage: React.FC = () => {
                 throw new Error('Battle not found or already started');
             }
 
+            // Only set opponent_id, DON'T change status
             const { error: updateError } = await supabase
                 .from('battles')
-                .update({
-                    opponent_id: user.id,
-                    status: 'PLAYING'
-                })
+                .update({ opponent_id: user.id })
                 .eq('id', battle.id);
 
             if (updateError) throw updateError;
 
-            console.log('Joined battle successfully! Redirecting...');
-            navigate(`/battle-quiz/${battle.id}`);
+            // Load profiles
+            const { data: hostProf } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', battle.host_id)
+                .single();
+            setHostProfile(hostProf);
+
+            const { data: myProf } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+            setOpponentProfile(myProf);
+
+            setBattleId(battle.id);
+            setState('LOBBY_WAITING_HOST');
         } catch (err: any) {
             console.error('Join battle error:', err.message);
             alert(err.message);
@@ -242,39 +344,123 @@ const BattlePage: React.FC = () => {
                             <Swords size={48} />
                         </div>
                         <h2 className="text-3xl font-black text-med-text mb-2">
-                            Battle Room Created
+                            Battle Lobby
                         </h2>
-                        <p className="text-gray-500 font-semibold">
-                            Share this code with your opponent
-                        </p>
-                    </div>
-
-                    <div className="mb-8">
                         <div className="flex items-center justify-center gap-2 mb-4">
-                            <div className="text-6xl font-black text-med-purple tracking-widest bg-med-purple/10 px-8 py-6 rounded-2xl border-2 border-med-purple/20">
+                            <div className="text-4xl font-black text-med-purple tracking-widest bg-med-purple/10 px-6 py-3 rounded-xl border-2 border-med-purple/20">
                                 {battleCode}
                             </div>
                             <button
                                 onClick={copyCode}
-                                className="p-4 rounded-xl bg-med-purple/10 hover:bg-med-purple/20 transition-colors"
+                                className="p-3 rounded-xl bg-med-purple/10 hover:bg-med-purple/20 transition-colors"
                             >
-                                {copied ? <Check size={24} className="text-med-purple" /> : <Copy size={24} className="text-med-purple" />}
+                                {copied ? <Check size={20} className="text-med-purple" /> : <Copy size={20} className="text-med-purple" />}
                             </button>
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-center gap-2 text-gray-400 font-bold mb-6">
-                        <Loader2 size={20} className="animate-spin" />
-                        <span>Waiting for opponent...</span>
+                    {/* Player List */}
+                    <div className="mb-8 space-y-3">
+                        {/* Host */}
+                        <div className="p-4 bg-med-primary/10 rounded-xl border-2 border-med-primary/20 flex items-center gap-4">
+                            <div className="w-12 h-12 bg-med-primary rounded-full flex items-center justify-center text-white font-black">
+                                {hostProfile?.full_name?.[0] ?? 'H'}
+                            </div>
+                            <div className="flex-1 text-left">
+                                <p className="font-black text-med-text">{hostProfile?.full_name ?? 'Host'}</p>
+                                <p className="text-sm text-gray-500 font-bold">Host • Ready</p>
+                            </div>
+                        </div>
+
+                        {/* Opponent */}
+                        {opponentReady && opponentProfile ? (
+                            <div className="p-4 bg-med-blue/10 rounded-xl border-2 border-med-blue/20 flex items-center gap-4">
+                                <div className="w-12 h-12 bg-med-blue rounded-full flex items-center justify-center text-white font-black">
+                                    {opponentProfile?.full_name?.[0] ?? 'O'}
+                                </div>
+                                <div className="flex-1 text-left">
+                                    <p className="font-black text-med-text">{opponentProfile?.full_name ?? 'Opponent'}</p>
+                                    <p className="text-sm text-gray-500 font-bold">Opponent • Ready</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="p-4 bg-gray-100 rounded-xl border-2 border-dashed border-gray-300 flex items-center gap-4">
+                                <Loader2 size={32} className="text-gray-400 animate-spin" />
+                                <p className="text-gray-400 font-bold">Waiting for opponent...</p>
+                            </div>
+                        )}
                     </div>
+
+                    {/* START Button */}
+                    <JuicyButton
+                        variant="primary"
+                        size="lg"
+                        fullWidth
+                        onClick={handleStartBattle}
+                        disabled={!opponentReady || loading}
+                        className="mb-4"
+                    >
+                        {loading ? 'Starting...' : 'START BATTLE'}
+                    </JuicyButton>
 
                     <JuicyButton
                         variant="outline"
                         size="md"
                         onClick={() => setState('MENU')}
+                        disabled={loading}
                     >
                         Cancel
                     </JuicyButton>
+                </JuicyCard>
+            </div>
+        );
+    }
+
+    if (state === 'LOBBY_WAITING_HOST') {
+        return (
+            <div className="flex-1 px-4 md:px-8 pb-12 w-full max-w-2xl mx-auto flex items-center justify-center">
+                <JuicyCard className="w-full text-center p-12">
+                    <div className="mb-8">
+                        <div className="w-24 h-24 bg-med-blue/10 rounded-full flex items-center justify-center text-med-blue mx-auto mb-6">
+                            <Users size={48} />
+                        </div>
+                        <h2 className="text-3xl font-black text-med-text mb-2">
+                            Joined Battle!
+                        </h2>
+                        <p className="text-gray-500 font-semibold mb-6">
+                            Waiting for host to start...
+                        </p>
+                    </div>
+
+                    {/* Player List */}
+                    <div className="mb-8 space-y-3">
+                        {/* Host */}
+                        <div className="p-4 bg-med-primary/10 rounded-xl border-2 border-med-primary/20 flex items-center gap-4">
+                            <div className="w-12 h-12 bg-med-primary rounded-full flex items-center justify-center text-white font-black">
+                                {hostProfile?.full_name?.[0] ?? 'H'}
+                            </div>
+                            <div className="flex-1 text-left">
+                                <p className="font-black text-med-text">{hostProfile?.full_name ?? 'Host'}</p>
+                                <p className="text-sm text-gray-500 font-bold">Host</p>
+                            </div>
+                        </div>
+
+                        {/* Me (Opponent) */}
+                        <div className="p-4 bg-med-blue/10 rounded-xl border-2 border-med-blue/20 flex items-center gap-4">
+                            <div className="w-12 h-12 bg-med-blue rounded-full flex items-center justify-center text-white font-black">
+                                {opponentProfile?.full_name?.[0] ?? 'Y'}
+                            </div>
+                            <div className="flex-1 text-left">
+                                <p className="font-black text-med-text">{opponentProfile?.full_name ?? 'You'} (You)</p>
+                                <p className="text-sm text-gray-500 font-bold">Ready</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-center gap-2 text-gray-400 font-bold">
+                        <Loader2 size={20} className="animate-spin" />
+                        <span>Host will start soon...</span>
+                    </div>
                 </JuicyCard>
             </div>
         );
