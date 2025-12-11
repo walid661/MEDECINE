@@ -114,6 +114,8 @@ const BattlePage: React.FC = () => {
 
     // HOST: Listen for opponent joining
     useEffect(() => {
+        console.log('🔍 HOST useEffect triggered - state:', state, 'battleId:', battleId, 'opponentReady:', opponentReady);
+
         let channel: any;
         let interval: any;
 
@@ -122,11 +124,14 @@ const BattlePage: React.FC = () => {
 
             // INITIAL CHECK: See if opponent already joined
             const checkInitialOpponent = async () => {
+                console.log('🔎 Running initial opponent check...');
                 const { data } = await supabase
                     .from('battles')
                     .select('opponent_id')
                     .eq('id', battleId)
                     .single();
+
+                console.log('🔎 Initial check result:', data);
 
                 if (data?.opponent_id && !opponentReady) {
                     console.log('👀 Opponent already present:', data.opponent_id);
