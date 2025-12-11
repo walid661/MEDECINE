@@ -242,7 +242,19 @@ const BattleQuiz: React.FC = () => {
         ].filter(p => p.score !== null) // Only show players who have finished
             .sort((a, b) => (b.score || 0) - (a.score || 0)); // Sort by score descending
 
-        const myRank = leaderboard.findIndex(p => p.isMe) + 1;
+        // Calculate Olympic-style ranks (with ties)
+        const rankedLeaderboard = leaderboard.map((player, index) => {
+            let rank = 1;
+            for (let i = 0; i < index; i++) {
+                if (leaderboard[i].score !== player.score) {
+                    rank = i + 2; // Skip ranks for ties
+                }
+            }
+            return { ...player, rank };
+        });
+
+        const myRank = rankedLeaderboard.find(p => p.isMe)?.rank || 1;
+        const isTied = rankedLeaderboard.filter(p => p.rank === myRank).length > 1;
 
         return (
             <div className="flex-1 px-4 md:px-8 pb-12 w-full max-w-4xl mx-auto">
@@ -258,7 +270,7 @@ const BattleQuiz: React.FC = () => {
                     <div className="mt-6 p-6 bg-med-bg rounded-xl">
                         <h3 className="text-xl font-black text-med-text mb-4">🏆 Classement</h3>
                         <div className="space-y-3">
-                            {leaderboard.map((player, index) => (
+                            {rankedLeaderboard.map((player, index) => (
                                 <div
                                     key={index}
                                     className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${player.isMe
@@ -267,11 +279,11 @@ const BattleQuiz: React.FC = () => {
                                         }`}
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-lg ${index === 0 ? 'bg-med-gold text-white' :
-                                            index === 1 ? 'bg-gray-300 text-gray-700' :
-                                                'bg-gray-200 text-gray-600'
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-lg ${player.rank === 1 ? 'bg-med-gold text-white' :
+                                                player.rank === 2 ? 'bg-gray-300 text-gray-700' :
+                                                    'bg-gray-200 text-gray-600'
                                             }`}>
-                                            {index + 1}
+                                            {player.rank}
                                         </div>
                                         <div className="text-left">
                                             <p className={`font-black ${player.isMe ? 'text-med-primary' : 'text-med-text'}`}>
@@ -297,7 +309,8 @@ const BattleQuiz: React.FC = () => {
                         {/* Rank message */}
                         {opponentScore !== null && (
                             <div className="mt-4 pt-4 border-t border-gray-200">
-                                {myRank === 1 && <p className="text-med-gold font-black text-lg">🥇 First Place!</p>}
+                                {myRank === 1 && !isTied && <p className="text-med-gold font-black text-lg">🥇 First Place!</p>}
+                                {myRank === 1 && isTied && <p className="text-med-gold font-black text-lg">🥇 Tied for First Place!</p>}
                                 {myRank === 2 && <p className="text-gray-500 font-bold">Keep practicing to reach #1!</p>}
                             </div>
                         )}
