@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { JuicyCard, JuicyButton } from '../components/ui/JuicyUI';
 import { Swords, Users, Plus, Loader2, Copy, Check } from 'lucide-react';
@@ -6,6 +7,7 @@ import { Swords, Users, Plus, Loader2, Copy, Check } from 'lucide-react';
 type BattleState = 'MENU' | 'LOBBY' | 'JOIN';
 
 const BattlePage: React.FC = () => {
+    const navigate = useNavigate();
     const [state, setState] = useState<BattleState>('MENU');
     const [battleCode, setBattleCode] = useState('');
     const [joinCode, setJoinCode] = useState('');
@@ -63,9 +65,9 @@ const BattlePage: React.FC = () => {
                 table: 'battles',
                 filter: `id=eq.${id}`
             }, (payload: any) => {
-                if (payload.new.opponent_id) {
-                    console.log('Opponent joined!', payload.new);
-                    // TODO: Start the quiz
+                if (payload.new.status === 'PLAYING') {
+                    console.log('Battle starting! Redirecting to quiz...');
+                    navigate(`/battle-quiz/${id}`);
                 }
             })
             .subscribe();
@@ -102,8 +104,8 @@ const BattlePage: React.FC = () => {
 
             if (updateError) throw updateError;
 
-            console.log('Joined battle successfully!');
-            // TODO: Navigate to quiz
+            console.log('Joined battle successfully! Redirecting...');
+            navigate(`/battle-quiz/${battle.id}`);
         } catch (err: any) {
             console.error('Join battle error:', err.message);
             alert(err.message);

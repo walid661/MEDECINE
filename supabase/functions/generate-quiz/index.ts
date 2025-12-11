@@ -78,8 +78,8 @@ serve(async (req) => {
     let context = chunks?.map((c: any) => c.content).join('\n---\n') || "";
 
     // Limit context to avoid timeouts
-    if (context.length > 10000) {
-      context = context.substring(0, 10000) + "...";
+    if (context.length > 60000) {
+      context = context.substring(0, 60000) + "...";
     }
 
     // Generate quiz with OpenAI
@@ -92,7 +92,7 @@ TÂCHE : Génère 5 questions QCM difficiles et variées sur le module "${module
 FORMAT DE SORTIE (JSON Array strict) : [ { "question_text": "...", "options": [{"id": "A", "text": "..."}, {"id": "B", "text": "..."}], "correct_option_id": "A", "explanation": "Explication détaillée citant le contexte." }, ... ]`;
 
       completion = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         messages: [
           { role: "system", content: promptSystem }
         ],

@@ -12,6 +12,19 @@ interface QuizOverlayProps {
 
 type QuizState = 'LOADING' | 'PLAYING' | 'FEEDBACK' | 'RESULTS' | 'ERROR';
 
+const MEDICAL_FUN_FACTS = [
+    "Le cœur bat environ 100 000 fois par jour...",
+    "Le fémur est plus solide que le béton...",
+    "L'IA est en train de lire vos cours...",
+    "Le corps humain contient environ 37 billions de cellules...",
+    "Vos poumons contiennent environ 2 400 km de voies respiratoires...",
+    "Le cerveau utilise 20% de l'oxygène total du corps...",
+    "Votre estomac produit une nouvelle couche de mucus toutes les 2 semaines...",
+    "Les humains partagent 60% de leur ADN avec les bananes...",
+    "Génération de questions personnalisées en cours...",
+    "Analyse de vos documents médicaux..."
+];
+
 const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle }) => {
     const [isVisible, setIsVisible] = useState(false);
     const [currentState, setCurrentState] = useState<QuizState>('LOADING');
@@ -20,6 +33,7 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
     const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
     const [score, setScore] = useState(0);
     const [loadingMessage, setLoadingMessage] = useState('Initializing...');
+    const [currentFactIndex, setCurrentFactIndex] = useState(0);
 
     // Animation transition for modal
     useEffect(() => {
@@ -35,12 +49,23 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
         }
     }, [isOpen]);
 
+    // Fun facts rotation
+    useEffect(() => {
+        if (currentState === 'LOADING') {
+            const interval = setInterval(() => {
+                setCurrentFactIndex((prev) => (prev + 1) % MEDICAL_FUN_FACTS.length);
+            }, 3000);
+            return () => clearInterval(interval);
+        }
+    }, [currentState]);
+
     const resetQuiz = () => {
         setCurrentState('LOADING');
         setQuestions([]);
         setCurrentIndex(0);
         setSelectedOptionId(null);
         setScore(0);
+        setCurrentFactIndex(0);
     };
 
     const startQuiz = async () => {
@@ -134,7 +159,12 @@ const QuizOverlay: React.FC<QuizOverlayProps> = ({ isOpen, onClose, moduleTitle 
         <div className="flex flex-col items-center justify-center h-[400px] text-center p-8">
             <Loader2 size={48} className="text-med-primary animate-spin mb-4" />
             <h3 className="text-xl font-extrabold text-med-text mb-2">Generating Quiz</h3>
-            <p className="text-gray-400 font-semibold">{loadingMessage}</p>
+            <p className="text-gray-400 font-semibold mb-6">{loadingMessage}</p>
+            <div className="mt-4 p-4 bg-med-primary/10 rounded-xl border-2 border-med-primary/20 min-h-[60px] flex items-center justify-center max-w-md">
+                <p className="text-med-primary font-bold text-sm animate-in fade-in duration-500" key={currentFactIndex}>
+                    💡 {MEDICAL_FUN_FACTS[currentFactIndex]}
+                </p>
+            </div>
         </div>
     );
 
