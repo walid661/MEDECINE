@@ -80,8 +80,7 @@ const BattlePage: React.FC = () => {
             setBattleCode(code);
             setBattleId(data.id);
             setState('LOBBY');
-
-            listenForOpponent(data.id);
+            // Opponent detection is now handled by useEffect
         } catch (err: any) {
             console.error('Create battle error:', err.message);
             alert('Failed to create battle: ' + err.message);
@@ -91,26 +90,51 @@ const BattlePage: React.FC = () => {
         }
     };
 
-    const listenForOpponent = (id: string) => {
-        const channel = supabase
-            .channel(`battle:${id}`)
-            .on('postgres_changes', {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'battles',
-                filter: `id=eq.${id}`
-            }, (payload: any) => {
-                if (payload.new.status === 'PLAYING') {
-                    console.log('Battle starting! Redirecting to quiz...');
-                    navigate(`/battle-quiz/${id}`);
-                }
-            })
-            .subscribe();
+    // ROBUST OPPONENT DETECTION: Realtime + Polling
+    useEffect(() => {
+        let channel: any;
+        let interval: any;
 
+        if (state === 'LOBBY' && battleId) {
+            console.log('🔒 Entering Lobby watch mode for Battle:', battleId);
+
+            // STRATEGY 1: REALTIME (Fast)
+            channel = supabase
+                .channel(`battle-lobby:${battleId}`)
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'battles',
+                    filter: `id=eq.${battleId}`
+                }, (payload: any) => {
+                    console.log('⚡ Realtime Update received:', payload.new);
+                    if (payload.new.status === 'PLAYING' || payload.new.opponent_id) {
+                        navigate(`/battle-quiz/${battleId}`);
+                    }
+                })
+                .subscribe();
+
+            // STRATEGY 2: POLLING (Backup if Realtime fails)
+            interval = setInterval(async () => {
+                const { data, error } = await supabase
+                    .from('battles')
+                    .select('status, opponent_id')
+                    .eq('id', battleId)
+                    .single();
+
+                if (data && (data.status === 'PLAYING' || data.opponent_id)) {
+                    console.log('🔄 Polling detected opponent! Redirecting...');
+                    navigate(`/battle-quiz/${battleId}`);
+                }
+            }, 3000); // Check every 3 seconds
+        }
+
+        // Cleanup
         return () => {
-            supabase.removeChannel(channel);
+            if (channel) supabase.removeChannel(channel);
+            if (interval) clearInterval(interval);
         };
-    };
+    }, [state, battleId, navigate]);
 
     const handleJoinBattle = async () => {
         setLoading(true);
