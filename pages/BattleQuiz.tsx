@@ -69,10 +69,13 @@ const BattleQuiz: React.FC = () => {
         return () => clearInterval(interval);
     }, [gameState, isStarting]);
 
-    // Listen for opponent score updates
+    // Listen for opponent score updates - IMPROVED WITH POLLING
     useEffect(() => {
         if (!battleId || gameState !== 'RESULTS') return;
 
+        console.log('👀 Setting up opponent score listener - isHost:', isHost);
+
+        // REALTIME listener
         const channel = supabase
             .channel(`battle-results:${battleId}`)
             .on('postgres_changes', {
@@ -82,14 +85,39 @@ const BattleQuiz: React.FC = () => {
                 filter: `id=eq.${battleId}`
             }, (payload: any) => {
                 const updatedBattle = payload.new;
-                setOpponentScore(isHost ? updatedBattle.opponent_score : updatedBattle.host_score);
+                const newOpponentScore = isHost ? updatedBattle.opponent_score : updatedBattle.host_score;
+                console.log('⚡ Realtime score update - newOpponentScore:', newOpponentScore);
+                if (newOpponentScore !== null) {
+                    setOpponentScore(newOpponentScore);
+                }
             })
-            .subscribe();
+            .subscribe((status) => {
+                console.log('📡 Score listener status:', status);
+            });
+
+        // POLLING as backup - check every 2 seconds
+        const interval = setInterval(async () => {
+            console.log('🔄 Polling for opponent score...');
+            const { data } = await supabase
+                .from('battles')
+                .select('host_score, opponent_score')
+                .eq('id', battleId)
+                .single();
+
+            if (data) {
+                const newOpponentScore = isHost ? data.opponent_score : data.host_score;
+                console.log('📊 Polled opponent score:', newOpponentScore);
+                if (newOpponentScore !== null && newOpponentScore !== opponentScore) {
+                    setOpponentScore(newOpponentScore);
+                }
+            }
+        }, 2000);
 
         return () => {
             supabase.removeChannel(channel);
+            clearInterval(interval);
         };
-    }, [battleId, gameState, isHost]);
+    }, [battleId, gameState, isHost, opponentScore]);
 
     const loadBattleData = async () => {
         try {
