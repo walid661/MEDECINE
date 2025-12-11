@@ -120,6 +120,27 @@ const BattlePage: React.FC = () => {
         if (state === 'LOBBY' && battleId) {
             console.log('🔒 Host waiting for opponent:', battleId);
 
+            // INITIAL CHECK: See if opponent already joined
+            const checkInitialOpponent = async () => {
+                const { data } = await supabase
+                    .from('battles')
+                    .select('opponent_id')
+                    .eq('id', battleId)
+                    .single();
+
+                if (data?.opponent_id && !opponentReady) {
+                    console.log('👀 Opponent already present:', data.opponent_id);
+                    setOpponentReady(true);
+                    const { data: oppProfile } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', data.opponent_id)
+                        .single();
+                    setOpponentProfile(oppProfile);
+                }
+            };
+            checkInitialOpponent();
+
             // REALTIME: Detect opponent joining
             channel = supabase
                 .channel(`battle-host:${battleId}`)
@@ -129,8 +150,9 @@ const BattlePage: React.FC = () => {
                     table: 'battles',
                     filter: `id=eq.${battleId}`
                 }, async (payload: any) => {
-                    console.log('⚡ Opponent joined:', payload.new);
-                    if (payload.new.opponent_id) {
+                    console.log('⚡ Realtime Update:', payload.new);
+                    if (payload.new.opponent_id && !opponentReady) {
+                        console.log('✅ Opponent joined via Realtime:', payload.new.opponent_id);
                         setOpponentReady(true);
                         // Load opponent profile
                         const { data: oppProfile } = await supabase
@@ -145,7 +167,9 @@ const BattlePage: React.FC = () => {
                         navigate(`/battle-quiz/${battleId}`);
                     }
                 })
-                .subscribe();
+                .subscribe((status) => {
+                    console.log('📡 Realtime subscription status:', status);
+                });
 
             // POLLING: Backup
             interval = setInterval(async () => {
@@ -157,6 +181,7 @@ const BattlePage: React.FC = () => {
 
                 if (data) {
                     if (data.opponent_id && !opponentReady) {
+                        console.log('🔄 Opponent detected via polling:', data.opponent_id);
                         setOpponentReady(true);
                         const { data: oppProfile } = await supabase
                             .from('profiles')
