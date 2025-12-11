@@ -13,7 +13,10 @@ serve(async (req) => {
   }
 
   try {
-    const { module, userId, mode, userYear } = await req.json()
+    const { module, userId, mode, userYear, questionCount: requestedCount } = await req.json()
+
+    // Battle mode always uses 15 questions, otherwise use requested count or default to 5
+    const questionCount = mode === 'battle' ? 15 : (requestedCount || 5);
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -32,7 +35,7 @@ serve(async (req) => {
         module: module,
         mode: mode || 'practice',
         status: 'IN_PROGRESS',
-        total_questions: 5,
+        total_questions: questionCount,
         score: 0
       })
       .select()
@@ -87,7 +90,7 @@ serve(async (req) => {
     try {
       const promptSystem = `Tu es un professeur de médecine.
 CONTEXTE : ${context}
-TÂCHE : Génère 5 questions QCM difficiles et variées sur le module "${module}".
+TÂCHE : Génère ${questionCount} questions QCM difficiles et variées sur le module "${module}".
 
 FORMAT DE SORTIE (JSON Array strict) : [ { "question_text": "...", "options": [{"id": "A", "text": "..."}, {"id": "B", "text": "..."}], "correct_option_id": "A", "explanation": "Explication détaillée citant le contexte." }, ... ]`;
 

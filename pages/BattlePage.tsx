@@ -2,9 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { JuicyCard, JuicyButton } from '../components/ui/JuicyUI';
-import { Swords, Users, Plus, Loader2, Copy, Check } from 'lucide-react';
+import { Swords, Users, Plus, Loader2, Copy, Check, Heart, Stethoscope, Brain, Bone, Pill, Microscope } from 'lucide-react';
 
-type BattleState = 'MENU' | 'LOBBY' | 'JOIN';
+type BattleState = 'MENU' | 'MODULE_SELECT' | 'LOBBY' | 'JOIN';
+
+// Available modules for battle
+const BATTLE_MODULES = [
+    { id: 'Anatomie 1', name: 'Anatomie S1', icon: Bone, color: 'bg-med-primary' },
+    { id: 'Anatomie 2', name: 'Anatomie S2', icon: Microscope, color: 'bg-med-purple' },
+    { id: 'Cardio', name: 'Cardiologie', icon: Heart, color: 'bg-med-red' },
+    { id: 'Pneumo', name: 'Pneumologie', icon: Stethoscope, color: 'bg-med-blue' },
+    { id: 'Digestif', name: 'Gastro-Entérologie', icon: Pill, color: 'bg-med-gold' },
+    { id: 'Neuro', name: 'Neurologie', icon: Brain, color: 'bg-med-purple' },
+];
 
 const BattlePage: React.FC = () => {
     const navigate = useNavigate();
@@ -14,6 +24,7 @@ const BattlePage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [copied, setCopied] = useState(false);
     const [battleId, setBattleId] = useState<string | null>(null);
+    const [selectedModule, setSelectedModule] = useState<string>('');
 
     const generateCode = () => {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -24,12 +35,30 @@ const BattlePage: React.FC = () => {
         return code;
     };
 
-    const handleCreateBattle = async () => {
+    const handleModuleSelect = (moduleId: string) => {
+        setSelectedModule(moduleId);
+        handleCreateBattle(moduleId);
+    };
+
+    const handleCreateBattle = async (module: string) => {
         setLoading(true);
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Not authenticated');
 
+            // Step 1: Generate quiz with 15 questions for battle mode
+            const { data: funcData, error: funcError } = await supabase.functions.invoke('generate-quiz', {
+                body: {
+                    module: module,
+                    userId: user.id,
+                    mode: 'battle'
+                }
+            });
+
+            if (funcError) throw new Error('Quiz generation failed: ' + funcError.message);
+            const quizId = funcData.quizId;
+
+            // Step 2: Create battle with quiz_id
             const code = generateCode();
 
             const { data, error } = await supabase
@@ -37,7 +66,11 @@ const BattlePage: React.FC = () => {
                 .insert({
                     code: code,
                     host_id: user.id,
-                    status: 'WAITING'
+                    status: 'WAITING',
+                    quiz_id: quizId,
+                    module: module,
+                    questions_count: 15,
+                    duration_seconds: 600
                 })
                 .select()
                 .single();
@@ -51,6 +84,8 @@ const BattlePage: React.FC = () => {
             listenForOpponent(data.id);
         } catch (err: any) {
             console.error('Create battle error:', err.message);
+            alert('Failed to create battle: ' + err.message);
+            setState('MODULE_SELECT');
         } finally {
             setLoading(false);
         }
@@ -119,6 +154,60 @@ const BattlePage: React.FC = () => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
+
+    if (state === 'MODULE_SELECT') {
+        return (
+            <div className="flex-1 px-4 md:px-8 pb-12 w-full max-w-4xl mx-auto flex items-center justify-center">
+                <JuicyCard className="w-full p-8">
+                    <div className="mb-8 text-center">
+                        <div className="w-24 h-24 bg-med-purple/10 rounded-full flex items-center justify-center text-med-purple mx-auto mb-6">
+                            <Swords size={48} />
+                        </div>
+                        <h2 className="text-3xl font-black text-med-text mb-2">
+                            Select Battle Module
+                        </h2>
+                        <p className="text-gray-500 font-semibold">
+                            Choose a medical subject for this competitive exam
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                        {BATTLE_MODULES.map((module) => {
+                            const IconComponent = module.icon;
+                            return (
+                                <button
+                                    key={module.id}
+                                    onClick={() => handleModuleSelect(module.id)}
+                                    disabled={loading}
+                                    className={`${module.color} text-white p-6 rounded-2xl border-b-4 border-black/20 hover:scale-105 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed`}
+                                >
+                                    <IconComponent size={32} className="mx-auto mb-2" />
+                                    <div className="font-black text-sm">{module.name}</div>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {loading && (
+                        <div className="text-center py-4">
+                            <Loader2 size={32} className="animate-spin mx-auto text-med-primary mb-2" />
+                            <p className="text-gray-500 font-semibold">Generating battle quiz...</p>
+                        </div>
+                    )}
+
+                    <JuicyButton
+                        variant="outline"
+                        size="lg"
+                        fullWidth
+                        onClick={() => setState('MENU')}
+                        disabled={loading}
+                    >
+                        Cancel
+                    </JuicyButton>
+                </JuicyCard>
+            </div>
+        );
+    }
 
     if (state === 'LOBBY') {
         return (
@@ -233,10 +322,10 @@ const BattlePage: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <JuicyCard
                     className="group min-h-[300px] flex flex-col items-center justify-center text-center gap-6 hover:border-med-purple hover:bg-med-purple/5 transition-colors cursor-pointer"
-                    onClick={handleCreateBattle}
+                    onClick={() => setState('MODULE_SELECT')}
                 >
                     <div className="w-24 h-24 bg-med-purple/10 rounded-full flex items-center justify-center text-med-purple group-hover:scale-110 transition-transform duration-300">
-                        {loading ? <Loader2 size={48} className="animate-spin" /> : <Plus size={48} strokeWidth={3} />}
+                        <Plus size={48} strokeWidth={3} />
                     </div>
                     <div>
                         <h3 className="text-2xl font-extrabold text-med-text mb-2">Create Room</h3>
@@ -244,8 +333,8 @@ const BattlePage: React.FC = () => {
                             Host a private battle and invite your study group
                         </p>
                     </div>
-                    <JuicyButton variant="purple" size="lg" className="mt-2" disabled={loading}>
-                        {loading ? 'Creating...' : 'Start Hosting'}
+                    <JuicyButton variant="purple" size="lg" className="mt-2">
+                        Start Hosting
                     </JuicyButton>
                 </JuicyCard>
 

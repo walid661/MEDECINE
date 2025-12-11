@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 import Dashboard from './pages/Dashboard';
 import BattlePage from './pages/BattlePage';
+import BattleQuiz from './pages/BattleQuiz';
 import AuthPage from './pages/AuthPage';
 import Onboarding from './pages/Onboarding';
 
@@ -87,6 +88,19 @@ const App: React.FC = () => {
             session ? (
               <ProtectedLayout>
                 <BattlePage />
+              </ProtectedLayout>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+
+        <Route
+          path="/battle-quiz/:battleId"
+          element={
+            session ? (
+              <ProtectedLayout>
+                <BattleQuiz />
               </ProtectedLayout>
             ) : (
               <Navigate to="/login" replace />
