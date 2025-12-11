@@ -227,8 +227,24 @@ const BattleQuiz: React.FC = () => {
 
     // RESULTS STATE
     if (gameState === 'RESULTS' && myScore !== null) {
-        const isWinner = opponentScore !== null && myScore > opponentScore;
-        const isTie = opponentScore !== null && myScore === opponentScore;
+        // Build leaderboard with both players
+        const { data: { user } } = await supabase.auth.getUser();
+
+        const leaderboard = [
+            {
+                name: isHost ? 'You' : 'Host',
+                score: myScore,
+                isMe: true
+            },
+            {
+                name: isHost ? 'Opponent' : 'You',
+                score: opponentScore,
+                isMe: !isHost
+            }
+        ].filter(p => p.score !== null) // Only show players who have finished
+            .sort((a, b) => (b.score || 0) - (a.score || 0)); // Sort by score descending
+
+        const myRank = leaderboard.findIndex(p => p.isMe) + 1;
 
         return (
             <div className="flex-1 px-4 md:px-8 pb-12 w-full max-w-4xl mx-auto">
@@ -240,20 +256,54 @@ const BattleQuiz: React.FC = () => {
                     <h2 className="text-3xl font-black text-med-text mb-2">Battle Complete!</h2>
                     <div className="text-6xl font-black text-med-primary mb-4">{myScore}/20</div>
 
-                    {opponentScore !== null && (
-                        <div className="mt-6 p-4 bg-med-bg rounded-xl">
-                            <p className="text-gray-500 font-bold mb-2">Opponent's Score</p>
-                            <p className="text-3xl font-black text-gray-700">{opponentScore}/20</p>
-                            {isWinner && <p className="text-med-primary font-black mt-2">🏆 You Win!</p>}
-                            {isTie && <p className="text-med-blue font-black mt-2">🤝 It's a Tie!</p>}
-                            {!isWinner && !isTie && <p className="text-gray-500 font-bold mt-2">Keep practicing!</p>}
+                    {/* LIVE LEADERBOARD */}
+                    <div className="mt-6 p-6 bg-med-bg rounded-xl">
+                        <h3 className="text-xl font-black text-med-text mb-4">🏆 Classement</h3>
+                        <div className="space-y-3">
+                            {leaderboard.map((player, index) => (
+                                <div
+                                    key={index}
+                                    className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${player.isMe
+                                            ? 'bg-med-primary/10 border-med-primary shadow-lg scale-105'
+                                            : 'bg-white border-gray-200'
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-lg ${index === 0 ? 'bg-med-gold text-white' :
+                                                index === 1 ? 'bg-gray-300 text-gray-700' :
+                                                    'bg-gray-200 text-gray-600'
+                                            }`}>
+                                            {index + 1}
+                                        </div>
+                                        <div className="text-left">
+                                            <p className={`font-black ${player.isMe ? 'text-med-primary' : 'text-med-text'}`}>
+                                                {player.name}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className={`text-2xl font-black ${player.isMe ? 'text-med-primary' : 'text-gray-700'}`}>
+                                        {player.score}/20
+                                    </div>
+                                </div>
+                            ))}
+
+                            {/* Waiting for opponent */}
+                            {opponentScore === null && (
+                                <div className="flex items-center justify-center p-4 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50">
+                                    <Loader2 size={20} className="animate-spin mr-2 text-gray-400" />
+                                    <p className="text-gray-400 font-semibold">Opponent still playing...</p>
+                                </div>
+                            )}
                         </div>
-                    )}
-                    {opponentScore === null && (
-                        <div className="mt-6 p-4 bg-gray-100 rounded-xl">
-                            <p className="text-gray-400 font-semibold">⏳ Opponent still in progress...</p>
-                        </div>
-                    )}
+
+                        {/* Rank message */}
+                        {opponentScore !== null && (
+                            <div className="mt-4 pt-4 border-t border-gray-200">
+                                {myRank === 1 && <p className="text-med-gold font-black text-lg">🥇 First Place!</p>}
+                                {myRank === 2 && <p className="text-gray-500 font-bold">Keep practicing to reach #1!</p>}
+                            </div>
+                        )}
+                    </div>
                 </JuicyCard>
 
                 {/* Detailed Correction */}
