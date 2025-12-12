@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Flame, Gem, Heart, ChevronDown, LogOut, User, GraduationCap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseClient';
 
 const TopBar: React.FC = () => {
    const navigate = useNavigate();
