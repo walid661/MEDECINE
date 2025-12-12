@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { JuicyCard, JuicyButton } from '../components/ui/JuicyUI';
-import { Swords, Users, Plus, Loader2, Copy, Check, Heart, Stethoscope, Brain, Bone, Pill, Microscope } from 'lucide-react';
+import { Swords, Users, Plus, Loader2, Copy, Check, Heart, Stethoscope, Brain, Bone, Pill, Microscope, UserPlus, Search, Hash } from 'lucide-react';
+import { BattleInviteModal } from '../components/BattleInviteModal';
 
-type BattleState = 'MENU' | 'MODULE_SELECT' | 'LOBBY' | 'LOBBY_WAITING_HOST' | 'JOIN';
+type BattleState = 'MENU' | 'MODULE_SELECT' | 'INVITE_MODE' | 'LOBBY' | 'LOBBY_WAITING_HOST' | 'JOIN';
 
 // Available modules for battle
 const BATTLE_MODULES = [
@@ -28,6 +29,7 @@ const BattlePage: React.FC = () => {
     const [hostProfile, setHostProfile] = useState<any>(null);
     const [opponentProfile, setOpponentProfile] = useState<any>(null);
     const [opponentReady, setOpponentReady] = useState(false);
+    const [showInviteModal, setShowInviteModal] = useState(false);
 
     const generateCode = () => {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -40,7 +42,7 @@ const BattlePage: React.FC = () => {
 
     const handleModuleSelect = (moduleId: string) => {
         setSelectedModule(moduleId);
-        handleCreateBattle(moduleId);
+        setState('INVITE_MODE'); // Go to invitation mode selection
     };
 
     const handleCreateBattle = async (module: string) => {
@@ -362,6 +364,95 @@ const BattlePage: React.FC = () => {
                     </JuicyButton>
                 </JuicyCard>
             </div>
+        );
+    }
+
+    // INVITE_MODE state - Choose how to invite opponent
+    if (state === 'INVITE_MODE') {
+        return (
+            <>
+                <div className="flex-1 px-4 md:px-8 pb-12 w-full max-w-4xl mx-auto flex items-center justify-center">
+                    <JuicyCard className="w-full p-8">
+                        <div className="mb-8 text-center">
+                            <div className="w-24 h-24 bg-med-blue/10 rounded-full flex items-center justify-center text-med-blue mx-auto mb-6">
+                                <Users size={48} />
+                            </div>
+                            <h2 className="text-3xl font-black text-med-text mb-2">
+                                Comment inviter votre adversaire ?
+                            </h2>
+                            <p className="text-gray-500 font-semibold">
+                                Choisissez votre méthode d'invitation
+                            </p>
+                        </div>
+
+                        <div className="grid gap-4 mb-6">
+                            {/* Option 1: Invite Friends */}
+                            <button
+                                onClick={() => {
+                                    handleCreateBattle(selectedModule);
+                                    setShowInviteModal(true);
+                                }}
+                                disabled={loading}
+                                className="p-6 rounded-xl border-2 border-med-primary bg-med-primary/5 hover:bg-med-primary/10 transition-all text-left group disabled:opacity-50"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 bg-med-primary rounded-xl flex items-center justify-center text-white">
+                                        <UserPlus size={28} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-xl font-black text-med-text mb-1">Inviter depuis mes amis</h3>
+                                        <p className="text-sm text-gray-500 font-semibold">Recherchez parmi vos amis ou par username</p>
+                                    </div>
+                                </div>
+                            </button>
+
+                            {/* Option 2: Share Code */}
+                            <button
+                                onClick={() => handleCreateBattle(selectedModule)}
+                                disabled={loading}
+                                className="p-6 rounded-xl border-2 border-gray-300 hover:border-med-blue hover:bg-med-blue/5 transition-all text-left group disabled:opacity-50"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 bg-med-blue rounded-xl flex items-center justify-center text-white">
+                                        <Hash size={28} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-xl font-black text-med-text mb-1">Code PIN</h3>
+                                        <p className="text-sm text-gray-500 font-semibold">Générer un code à partager</p>
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+
+                        {loading && (
+                            <div className="text-center py-4">
+                                <Loader2 className="animate-spin mx-auto text-med-primary" size={36} />
+                                <p className="text-gray-500 font-semibold mt-2">Création du battle...</p>
+                            </div>
+                        )}
+
+                        <button
+                            onClick={() => setState('MODULE_SELECT')}
+                            className="text-gray-500 hover:text-gray-700 font-bold"
+                            disabled={loading}
+                        >
+                            ← Back
+                        </button>
+                    </JuicyCard>
+                </div>
+
+                {/* Invite Modal */}
+                {showInviteModal && battleId && (
+                    <BattleInviteModal
+                        battleId={battleId}
+                        onClose={() => setShowInviteModal(false)}
+                        onInviteSent={() => {
+                            // Invitation sent, opponent will join
+                            setShowInviteModal(false);
+                        }}
+                    />
+                )}
+            </>
         );
     }
 
