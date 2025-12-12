@@ -1,15 +1,16 @@
 import React from 'react';
-import { Home, BookOpen, Trophy, Store, MoreHorizontal, Activity, Swords } from 'lucide-react';
+import { Home, BookOpen, Trophy, Store, MoreHorizontal, Activity, Swords, Users } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 const Sidebar: React.FC = () => {
-    
+
     const location = useLocation();
     const activeRoute = location.pathname;
 
     const navItems = [
         { icon: <Home size={28} />, label: 'Learn', path: '/' },
         { icon: <Swords size={28} />, label: 'Battle', path: '/battle' },
+        { icon: <Users size={28} />, label: 'Friends', path: '/friends' },
         { icon: <BookOpen size={28} />, label: 'Review', path: '/review' },
         { icon: <Trophy size={28} />, label: 'Rank', path: '/leaderboard' },
         { icon: <Store size={28} />, label: 'Shop', path: '/shop' },
@@ -37,8 +38,8 @@ const Sidebar: React.FC = () => {
                             to={item.path}
                             className={`
                                 w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 border-2 border-transparent
-                                ${isActive 
-                                    ? 'bg-med-blue/10 border-med-blue text-med-blueDark' 
+                                ${isActive
+                                    ? 'bg-med-blue/10 border-med-blue text-med-blueDark'
                                     : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}
                             `}
                         >
@@ -51,10 +52,10 @@ const Sidebar: React.FC = () => {
                         </Link>
                     )
                 })}
-                
+
                 <button className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-gray-400 hover:bg-gray-100 transition-colors hidden lg:flex">
-                     <MoreHorizontal size={28} />
-                     <span className="font-extrabold text-sm uppercase tracking-widest">More</span>
+                    <MoreHorizontal size={28} />
+                    <span className="font-extrabold text-sm uppercase tracking-widest">More</span>
                 </button>
             </nav>
         </aside>

@@ -6,6 +6,7 @@ import TopBar from './components/TopBar';
 import Dashboard from './pages/Dashboard';
 import BattlePage from './pages/BattlePage';
 import BattleQuiz from './pages/BattleQuiz';
+import FriendsPage from './pages/FriendsPage';
 import AuthPage from './pages/AuthPage';
 import Onboarding from './pages/Onboarding';
 
@@ -88,6 +89,19 @@ const App: React.FC = () => {
             session ? (
               <ProtectedLayout>
                 <BattlePage />
+              </ProtectedLayout>
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+
+        <Route
+          path="/friends"
+          element={
+            session ? (
+              <ProtectedLayout>
+                <FriendsPage />
               </ProtectedLayout>
             ) : (
               <Navigate to="/login" replace />
